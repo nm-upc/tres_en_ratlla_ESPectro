@@ -753,12 +753,15 @@ void runGame() {
         delay(20);
         if (trGameOver) {
             delay(1500);
-            if (xSemaphoreTake(recordMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
-                saveRecord(trScore);
-                xSemaphoreGive(recordMutex);
+            if (trScore > bestScore) {
+                bestScore = trScore;
+                if (xSemaphoreTake(recordMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
+                    saveRecord(bestScore);
+                    xSemaphoreGive(recordMutex);
+                }
             }
             return;
-        }
+        } 
         if (!trPlayerTurn) {
             delay(400);
             trAiMove(trBoard);
@@ -785,7 +788,15 @@ void runGame() {
         bool btnA = (digitalRead(BTN_A_PIN) == LOW);
         bool btnB = (digitalRead(BTN_B_PIN) == LOW);
 
-        if (btnB) return;
+        if (btnB) {
+            if (trScore > bestScore) {
+                if (xSemaphoreTake(recordMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
+                    saveRecord(trScore);
+                    xSemaphoreGive(recordMutex);
+                }
+            }
+            return;
+        }
 
         int dx = (rawX<1748)?-1:(rawX>2348)?1:0;
         int dy = (rawY<1748)?-1:(rawY>2348)?1:0;
