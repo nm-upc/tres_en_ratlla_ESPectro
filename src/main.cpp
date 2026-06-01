@@ -662,6 +662,7 @@ void drawMenu(int bestScore) {
 int trScore = 0;
 int trBoard[9];       // 0=buit, 1=jugador, 2=màquina
 int trCursor = 0;     // posició cursor (0-8)
+int trDifficulty = 1;
 bool trPlayerTurn = true;
 bool trGameOver = false;
 
@@ -688,6 +689,15 @@ int trMinimax(int* b, int depth, bool isMax) {
     return best;
 }
 void trAiMove(int* b) {
+    int rndChance = (trDifficulty==0) ? 70 : (trDifficulty==1) ? 40 : 0;
+
+    if (random(100) < rndChance) {
+        int buits[9], n=0;
+        for (int i=0;i<9;i++) if (!b[i]) buits[n++]=i;
+        if (n>0) b[buits[random(n)]]=2;
+        return;
+    }
+
     int best=-100, mv=0;
     for (int i=0;i<9;i++) {
         if (!b[i]) {
@@ -740,6 +750,34 @@ void runGame() {
     tft.setTextSize(3);
     tft.setCursor(20,10); tft.print("TRES EN RATLLA");
     tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setCursor(30,100); tft.print("Selecciona dificultat:");
+    tft.setCursor(50,150); tft.print("Amunt   = Facil");
+    tft.setCursor(50,180); tft.print("Centre  = Mitja");
+    tft.setCursor(50,210); tft.print("Avall   = Dificil");
+
+    while (true) {
+        int rawY = analogRead(JOY_Y_PIN);
+        if (rawY > 2348) { trDifficulty=0; break; }
+        if (rawY < 1748) { trDifficulty=2; break; }
+        if (digitalRead(BTN_A_PIN)==LOW) { trDifficulty=1; break; }
+        if (digitalRead(BTN_B_PIN)==LOW) return;
+        delay(50);
+    }
+
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_GREEN, TFT_BLACK); tft.setTextSize(2);
+    tft.setCursor(50,200);
+    if (trDifficulty==0) tft.print("Mode: FACIL");
+    else if (trDifficulty==1) tft.print("Mode: MITJA");
+    else tft.print("Mode: DIFICIL");
+    delay(800);
+
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(tft.color565(255,80,0), TFT_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(20,10); tft.print("TRES EN RATLLA");
+    tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE,TFT_BLACK);
     tft.setCursor(10,55); tft.print("Tu: X  |  Maquina: O");
     tft.setCursor(10,80); tft.print("Joy=moure  A=col·loca");
@@ -753,12 +791,8 @@ void runGame() {
         delay(20);
         if (trGameOver) {
             delay(1500);
-            if (trScore > bestScore) {
-                bestScore = trScore;
-                if (xSemaphoreTake(recordMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
-                    saveRecord(bestScore);
-                    xSemaphoreGive(recordMutex);
-                }
+            if (xSemaphoreTake(recordMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
+                saveRecord(trScore); xSemaphoreGive(recordMutex);
             }
             return;
         } 
@@ -771,6 +805,7 @@ void runGame() {
                 tft.setTextColor(TFT_RED,TFT_BLACK); tft.setTextSize(3);
                 tft.setCursor(60,430); tft.print("DERROTA!");
                 playTone(200,300,0.12f);
+                trScore++;
                 trGameOver=true;
             } else if (trBoardFull(trBoard)) {
                 trDrawBoard(trBoard,-1,bestScore);
@@ -789,11 +824,8 @@ void runGame() {
         bool btnB = (digitalRead(BTN_B_PIN) == LOW);
 
         if (btnB) {
-            if (trScore > bestScore) {
-                if (xSemaphoreTake(recordMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
-                    saveRecord(trScore);
-                    xSemaphoreGive(recordMutex);
-                }
+            if (xSemaphoreTake(recordMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
+                saveRecord(trScore); xSemaphoreGive(recordMutex);
             }
             return;
         }
